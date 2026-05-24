@@ -56,10 +56,12 @@ export function LibraryClient(): React.ReactElement {
           <p className="eyebrow">{t("libraryEyebrow")}</p>
           <h1>{t("libraryTitle")}</h1>
         </div>
-        <Link className="button primary" href="/import">
-          <UploadCloud size={18} aria-hidden="true" />
-          {t("importPhotos")}
-        </Link>
+        <div className="actions">
+          <Link className="button primary" href="/import">
+            <UploadCloud size={18} aria-hidden="true" />
+            {t("importPhotos")}
+          </Link>
+        </div>
       </section>
 
       <section className="toolbar">

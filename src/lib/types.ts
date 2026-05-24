@@ -2,9 +2,12 @@ export type ImportBatchStatus =
   | "uploaded"
   | "analyzing"
   | "needs_key"
+  | "needs_retry"
   | "needs_review"
   | "failed"
   | "complete";
+
+export type ImportBatchImageStatus = "pending" | "analyzing" | "succeeded" | "failed";
 
 export type ImportItemStatus =
   | "pending_lookup"
@@ -36,7 +39,7 @@ export interface VisionResult {
   books: VisionBook[];
 }
 
-export type VisionProviderName = "opencode-go" | "openai";
+export type VisionProviderName = "opencode-go" | "openai" | "grok" | "gemini" | "claude";
 export type UiLanguage =
   | "zh-Hant"
   | "zh-Hans"
@@ -60,6 +63,16 @@ export interface AppSettings {
   opencodeGoMaxTokens: string;
   openaiApiKey: string;
   openaiVisionModel: string;
+  grokApiKey: string;
+  grokBaseUrl: string;
+  grokVisionModel: string;
+  grokMaxTokens: string;
+  geminiApiKey: string;
+  geminiVisionModel: string;
+  geminiMaxTokens: string;
+  claudeApiKey: string;
+  claudeVisionModel: string;
+  claudeMaxTokens: string;
   googleBooksApiKey: string;
   isbndbApiKey: string;
   naverClientId: string;
@@ -117,12 +130,74 @@ export interface Book {
   updatedAt: string;
 }
 
+export interface LibraryExportRow {
+  bookId: string;
+  title: string;
+  authors: string[];
+  publisher: string;
+  publishedDate: string;
+  isbn10: string;
+  isbn13: string;
+  coverUrl: string;
+  description: string;
+  source: string;
+  sourceId: string;
+  normalizedKey: string;
+  bookCreatedAt: string;
+  bookUpdatedAt: string;
+  copyId: string;
+  copyStatus: string;
+  location: string;
+  notes: string;
+  acquiredAt: string;
+  copyCreatedAt: string;
+}
+
+export interface LibraryImportRow {
+  copyId: string;
+  title: string;
+  authors: string[];
+  publisher: string;
+  publishedDate: string;
+  isbn10: string;
+  isbn13: string;
+  coverUrl: string;
+  description: string;
+  source: string;
+  sourceId: string;
+  location: string;
+  notes: string;
+  acquiredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryImportSummary {
+  rows: number;
+  createdBooks: number;
+  mergedBooks: number;
+  createdCopies: number;
+  skippedCopies: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
 export interface ImportBatch {
   id: string;
   status: ImportBatchStatus;
   imagePaths: string[];
   imageCount: number;
   errorMessage: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImportBatchImage {
+  batchId: string;
+  imagePath: string;
+  status: ImportBatchImageStatus;
+  attempts: number;
+  errorMessage: string;
+  lastAttemptAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,11 +215,14 @@ export interface ImportItem {
   status: ImportItemStatus;
   chosenBookId: string;
   errorMessage: string;
+  lookupAttempts: number;
+  lastLookupAttemptAt: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ImportBatchDetail {
   batch: ImportBatch;
+  images: ImportBatchImage[];
   items: ImportItem[];
 }

@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
   }
 
   try {
-    const file = await readFile(filePath);
+    const file = await readFile(/*turbopackIgnore: true*/ filePath);
     return new NextResponse(file, {
       headers: {
         "content-type": mimeTypeForPath(filePath),

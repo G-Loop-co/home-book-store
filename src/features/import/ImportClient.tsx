@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ImagePlus, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, ImagePlus, Loader2, RotateCw, Sparkles, Trash2 } from "lucide-react";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { useErrorToast } from "@/features/toast/ToastProvider";
 import type { ImportBatch } from "@/lib/types";
@@ -268,9 +268,9 @@ export function ImportClient(): React.ReactElement {
         ) : null}
 
         <div className="actions">
-          <button className="button primary" type="button" onClick={analyze} disabled={busy || (files.length === 0 && !batch)} title={t("visionAnalyze")}>
-            {busy ? <Loader2 size={17} aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
-            {phase === "analyzing" ? t("analyzing") : t("visionAnalyze")}
+          <button className="button primary" type="button" onClick={analyze} disabled={busy || (files.length === 0 && !batch)} title={batch ? t("resumeAnalysis") : t("visionAnalyze")}>
+            {busy ? <Loader2 size={17} aria-hidden="true" /> : batch ? <RotateCw size={17} aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
+            {phase === "analyzing" ? t("analyzing") : batch ? t("resumeAnalysis") : t("visionAnalyze")}
           </button>
         </div>
       </section>

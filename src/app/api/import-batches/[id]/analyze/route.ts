@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import {
+  ensureImportBatchImageRows,
   getImportBatch,
   getImportBatchDetail,
+  markImportBatchImageAnalyzing,
+  markImportBatchImageFailed,
+  markImportBatchImageSucceeded,
+  markImportItemLookupFailed,
   markOwnedCandidates,
-  replaceImportItems,
+  resumableImportBatchImages,
   setBatchStatus,
+  upsertImportItemsForImage,
   updateImportItemCandidates
 } from "@/lib/db";
 import { lookupBookMetadata } from "@/lib/metadata/providers";
@@ -39,8 +45,8 @@ async function lookupInsertedItems(items: ImportItem[]): Promise<void> {
     try {
       const candidates = markOwnedCandidates(await lookupBookMetadata(itemVisionInput(item)));
       updateImportItemCandidates(item.id, candidates, "needs_review");
-    } catch {
-      updateImportItemCandidates(item.id, [], "needs_review");
+    } catch (error) {
+      markImportItemLookupFailed(item.id, error instanceof Error ? error.message : "Metadata lookup failed.");
     }
   }
 }
@@ -53,17 +59,38 @@ export async function POST(_request: Request, { params }: RouteParams): Promise<
   }
 
   try {
+    ensureImportBatchImageRows(id, batch.imagePaths);
     setBatchStatus(id, "analyzing");
-    const imageBooks = [];
-    for (const imagePath of batch.imagePaths) {
-      const result = await analyzeBookshelfImage(imagePath);
-      imageBooks.push({ imagePath, books: result.books });
+    const targets = resumableImportBatchImages(id);
+    const failures: string[] = [];
+
+    for (const image of targets) {
+      markImportBatchImageAnalyzing(id, image.imagePath);
+      try {
+        const result = await analyzeBookshelfImage(image.imagePath);
+        const insertedItems = upsertImportItemsForImage(id, image.imagePath, result.books);
+        markImportBatchImageSucceeded(id, image.imagePath);
+        await lookupInsertedItems(insertedItems);
+      } catch (error) {
+        if (error instanceof MissingVisionKeyError) {
+          setBatchStatus(id, "needs_key", error.message);
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+
+        const message = error instanceof Error ? error.message : "Vision analysis failed.";
+        markImportBatchImageFailed(id, image.imagePath, message);
+        failures.push(message);
+      }
     }
 
-    const insertedItems = replaceImportItems(id, imageBooks);
-    await lookupInsertedItems(insertedItems);
+    if (failures.length > 0) {
+      setBatchStatus(id, "needs_retry", failures[0]);
+    } else {
+      setBatchStatus(id, "needs_review");
+    }
+
     const detail = getImportBatchDetail(id);
-    return NextResponse.json(detail);
+    return NextResponse.json(detail ? { ...detail, failures } : { failures });
   } catch (error) {
     if (error instanceof MissingVisionKeyError) {
       setBatchStatus(id, "needs_key", error.message);

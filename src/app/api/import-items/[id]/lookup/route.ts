@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getImportItem, markOwnedCandidates, updateImportItemCandidates } from "@/lib/db";
+import { getImportItem, markImportItemLookupFailed, markOwnedCandidates, updateImportItemCandidates } from "@/lib/db";
 import { lookupBookMetadata } from "@/lib/metadata/providers";
 import type { VisionBook } from "@/lib/types";
 
@@ -46,8 +46,10 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     const updated = updateImportItemCandidates(id, candidates, "needs_review");
     return NextResponse.json({ item: updated });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Metadata lookup failed.";
+    const updated = markImportItemLookupFailed(id, message);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Metadata lookup failed." },
+      { error: message, item: updated },
       { status: 500 }
     );
   }

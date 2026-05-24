@@ -62,9 +62,10 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     });
     return NextResponse.json(result);
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to confirm import item.";
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to confirm import item." },
-      { status: 500 }
+      { error: message },
+      { status: message === "Import item not found." ? 404 : 500 }
     );
   }
 }

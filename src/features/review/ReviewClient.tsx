@@ -101,6 +101,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     label: "",
     errors: 0
   });
+  const [analyzingBatch, setAnalyzingBatch] = useState(false);
   const [error, setError] = useState("");
   const autoLookupBatchRef = useRef("");
   useErrorToast(error);
@@ -135,6 +136,12 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
 
   const lookupableCount = useMemo(
     () => detail?.items.filter(needsMetadataLookup).length ?? 0,
+    [detail]
+  );
+
+  const failedImageCount = useMemo(() => detail?.images.filter((image) => image.status === "failed").length ?? 0, [detail]);
+  const resumableImageCount = useMemo(
+    () => detail?.images.filter((image) => image.status === "pending" || image.status === "failed" || image.status === "analyzing").length ?? 0,
     [detail]
   );
 
@@ -274,8 +281,16 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
         isbn: editValue(item, "isbn")
       })
     });
-    const data = await readJson<{ item: ImportItem }>(response);
-    updateItem(data.item);
+    const data = (await response.json()) as { item?: ImportItem; error?: string };
+    if (data.item) {
+      updateItem(data.item);
+    }
+    if (!response.ok) {
+      throw new Error(data.error || t("metadataLookupFailed"));
+    }
+    if (!data.item) {
+      throw new Error(t("metadataLookupFailed"));
+    }
     const firstCandidate = data.item.metadataCandidates[0];
     if (firstCandidate) {
       setSelected((current) => ({ ...current, [item.id]: firstCandidate.id }));
@@ -352,6 +367,23 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     }
   }
 
+  async function resumeBatchAnalysis(): Promise<void> {
+    setAnalyzingBatch(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/import-batches/${batchId}/analyze`, {
+        method: "POST"
+      });
+      await readJson<ImportBatchDetail>(response);
+      await refresh();
+    } catch (resumeError) {
+      setError(resumeError instanceof Error ? resumeError.message : t("resumeAnalysisFailed"));
+      await refresh();
+    } finally {
+      setAnalyzingBatch(false);
+    }
+  }
+
   useEffect(() => {
     if (!detail || loading || bulkLookup.active || lookupableCount === 0) {
       return;
@@ -421,6 +453,16 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
           <button
             className="button"
             type="button"
+            onClick={resumeBatchAnalysis}
+            disabled={loading || analyzingBatch || resumableImageCount === 0}
+            title={t("resumeAnalysis")}
+          >
+            {analyzingBatch ? <Loader2 size={17} aria-hidden="true" /> : <RotateCw size={17} aria-hidden="true" />}
+            {t("resumeAnalysis")}
+          </button>
+          <button
+            className="button"
+            type="button"
             onClick={() => lookupMissingMetadata()}
             disabled={loading || bulkLookup.active || lookupableCount === 0}
             title={t("lookupAll")}
@@ -443,6 +485,13 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
         <div className="notice error">
           <AlertCircle size={18} aria-hidden="true" />
           <span>{error}</span>
+        </div>
+      ) : null}
+
+      {failedImageCount > 0 ? (
+        <div className="notice error">
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>{t("resumeImagesNeeded", { count: failedImageCount })}</span>
         </div>
       ) : null}
 
@@ -540,6 +589,13 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
                     placeholder={t("descriptionField")}
                   />
                 </div>
+
+                {item.errorMessage ? (
+                  <div className="notice error compact">
+                    <AlertCircle size={16} aria-hidden="true" />
+                    <span>{item.errorMessage}</span>
+                  </div>
+                ) : null}
 
                 <div className="candidate-list">
                   <label className="candidate-row">
