@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Search, UploadCloud } from "lucide-react";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useErrorToast } from "@/features/toast/ToastProvider";
 import type { Book } from "@/lib/types";
 
 interface BooksResponse {
@@ -16,6 +17,7 @@ export function LibraryClient(): React.ReactElement {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  useErrorToast(error);
 
   useEffect(() => {
     const controller = new AbortController();

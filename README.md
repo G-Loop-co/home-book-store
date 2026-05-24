@@ -12,17 +12,11 @@ Desktop home-library app. Drop in bookshelf photos, let Vision AI detect book sp
 
 [繁體中文](./README.zh-TW.md)
 
-## Preview
-
-![Home Book Store import preview](./docs/assets/readme-preview.png)
-
 ## Use Case
 
 ![Shelf photo to local library workflow generated with HyperFrames](./docs/assets/use-case-hyperframes.png)
 
 Use Home Book Store when you need to bulk catalog home shelves, clean up uncertain AI matches, and keep the final library private on your own machine.
-
-Animated HyperFrames version: [use-case-hyperframes.mp4](./docs/assets/use-case-hyperframes.mp4)
 
 ## Main Points
 

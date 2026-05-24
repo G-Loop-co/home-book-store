@@ -12,17 +12,11 @@
 
 [English](./README.md)
 
-## 預覽
-
-![Home Book Store 匯入頁預覽](./docs/assets/readme-preview.png)
-
 ## 使用情境
 
 ![HyperFrames 產生的書架照片到本機藏書庫流程](./docs/assets/use-case-hyperframes.png)
 
 適合一次整理整面書架：先用照片批次辨識，再修正不確定的 AI 配對，最後把乾淨資料存進本機 SQLite。
-
-HyperFrames 動畫版：[use-case-hyperframes.mp4](./docs/assets/use-case-hyperframes.mp4)
 
 ## 重點
 

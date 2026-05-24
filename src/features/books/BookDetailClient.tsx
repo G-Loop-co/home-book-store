@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, CheckCircle2, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useErrorToast } from "@/features/toast/ToastProvider";
 import type { Book } from "@/lib/types";
 
 interface BookDetailClientProps {
@@ -64,6 +65,7 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  useErrorToast(error);
 
   useEffect(() => {
     const controller = new AbortController();

@@ -738,6 +738,64 @@ input.input {
   background: var(--red);
 }
 
+.toast-stack {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: grid;
+  gap: 12px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 20px 48px rgb(54 48 37 / 18%);
+  pointer-events: auto;
+}
+
+.toast.error {
+  border-color: rgb(166 64 53 / 42%);
+  color: var(--red);
+}
+
+.toast-copy {
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+}
+
+.toast-copy strong {
+  color: var(--red);
+  font-size: 0.88rem;
+}
+
+.toast-copy span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
 .file-list {
   display: grid;
   gap: 8px;
@@ -898,5 +956,10 @@ input.input {
 
   .main {
     padding-inline: 16px;
+  }
+
+  .toast-stack {
+    right: 16px;
+    bottom: 16px;
   }
 }

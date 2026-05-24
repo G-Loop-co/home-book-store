@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Globe2, KeyRound, Save, Settings, SlidersHorizontal } from "lucide-react";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useErrorToast } from "@/features/toast/ToastProvider";
 import { SUPPORTED_UI_LANGUAGES } from "@/lib/i18n";
 import type { AppSettings } from "@/lib/types";
 
@@ -43,6 +44,7 @@ export function SettingsClient(): React.ReactElement {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  useErrorToast(error);
 
   const isOpenCodeGo = settings.visionProvider === "opencode-go";
   const activeProviderName = isOpenCodeGo ? "OpenCode Go" : "OpenAI";

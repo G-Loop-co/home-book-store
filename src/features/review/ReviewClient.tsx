@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useErrorToast } from "@/features/toast/ToastProvider";
 import type { ImportBatchDetail, ImportItem, MetadataCandidate } from "@/lib/types";
 
 interface ReviewClientProps {
@@ -102,6 +103,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
   });
   const [error, setError] = useState("");
   const autoLookupBatchRef = useRef("");
+  useErrorToast(error);
 
   const refresh = useCallback(async () => {
     setLoading(true);

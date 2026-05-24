@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ImagePlus, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useErrorToast } from "@/features/toast/ToastProvider";
 import type { ImportBatch } from "@/lib/types";
 
 interface CreateBatchResponse {
@@ -26,6 +27,7 @@ export function ImportClient(): React.ReactElement {
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [error, setError] = useState("");
+  useErrorToast(error);
 
   const totalSize = useMemo(() => files.reduce((total, file) => total + file.size, 0), [files]);
 
