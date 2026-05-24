@@ -12,12 +12,24 @@ Desktop home-library app. Drop in bookshelf photos, let Vision AI detect book sp
 
 [繁體中文](./README.zh-TW.md)
 
+## Preview
+
+![Home Book Store import preview](./docs/assets/readme-preview.png)
+
+## Use Case
+
+![Shelf photo to local library workflow generated with HyperFrames](./docs/assets/use-case-hyperframes.png)
+
+Use Home Book Store when you need to bulk catalog home shelves, clean up uncertain AI matches, and keep the final library private on your own machine.
+
+Animated HyperFrames version: [use-case-hyperframes.mp4](./docs/assets/use-case-hyperframes.mp4)
+
 ## Main Points
 
 - Import many books from one shelf photo.
 - Default Vision provider: OpenCode Go. OpenAI is also supported.
-- Book metadata lookup: Open Library, Google Books, ISBN.tw, KingStone, HKBookCentre, Douban, Internet Archive.
-- Manual review before saving, so AI mistakes do not pollute your library.
+- Book metadata lookup: Open Library, Google Books, Library of Congress, ISBN.tw, KingStone, HKBookCentre, Douban, openBD, BnF, DNB, Internet Archive, plus optional keyed ISBNdb, Naver Books, and Rakuten Books.
+- Manual review before saving, with edit/delete support, so AI mistakes do not pollute your library.
 - Local SQLite database. Desktop app starts its own local server automatically.
 
 ## Quick Start
@@ -49,6 +61,7 @@ Use the in-app Settings page.
 
 - Required: Vision API key for the selected provider.
 - Optional: Google Books API key.
+- Optional keyed metadata sources: ISBNdb, Naver Books, Rakuten Books. They stay disabled until keys are saved.
 - Advanced: base URL, model, max tokens.
 
 Do not commit `.env.local`, API keys, `.data/`, `public/uploads/`, or `dist/`.
