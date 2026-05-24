@@ -1,19 +1,26 @@
 # Home Book Store
 
-本機私用、桌面優先的家中藏書管理工具。上傳書架照片後，Vision AI 會辨識多本書脊，系統再用多個免費來源補書籍 metadata，最後經人工確認才匯入藏書庫。
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)
+![Electron](https://img.shields.io/badge/Electron-desktop-47848f.svg)
+![SQLite](https://img.shields.io/badge/SQLite-local-003b57.svg)
 
-[English README](./README.md)
+桌面版家中藏書工具。拖入書架照片，Vision AI 辨識書脊，系統用免費書籍來源補資料，最後人工確認再入庫。
 
-## 功能
+**Tags:** `home-library` `desktop-app` `vision-ai` `books` `sqlite` `nextjs` `electron`
 
-- 書架照片匯入：支援拖放與圖片預覽。
-- Vision AI 書脊辨識：預設 OpenCode Go，也保留 OpenAI fallback。
-- 人工確認佇列：可修改書名、作者、出版社、ISBN，再匯入或略過。
-- Cross-source metadata：Open Library、Google Books、ISBN.tw、KingStone、HKBookCentre、Douban、Internet Archive。
-- Duplicate detection：ISBN 精準比對；沒有 ISBN 時用 normalized title + author 比對。
-- Desktop settings：API key、base URL、model、max tokens、Google Books key 都可在 app 內設定。
+[English](./README.md)
 
-## 本機開發
+## 重點
+
+- 一張書架照片可匯入多本書。
+- 預設 Vision provider：OpenCode Go；也支援 OpenAI。
+- 書籍資料來源：Open Library、Google Books、ISBN.tw、KingStone、HKBookCentre、Douban、Internet Archive。
+- 先進 review queue，確認後才寫入藏書庫，避免 AI 誤認污染資料。
+- 本機 SQLite database；desktop app 打開後會自動啟動本機 server。
+
+## 快速開始
 
 ```bash
 npm install
@@ -21,63 +28,30 @@ cp .env.example .env.local
 npm run dev
 ```
 
-開發網址：
+打開 `http://localhost:3000`。
 
-```text
-http://localhost:3000
-```
-
-## 設定
-
-一般桌面使用只需要打開 app 的「設定」頁：
-
-- 必填：目前 Vision provider 的 API key。
-- 選填：Google Books API key；留空也會查其他免費來源。
-- 進階：base URL、model、max tokens，通常不用改。
-
-`.env.local` 仍可作為 fallback：
-
-```bash
-VISION_PROVIDER=opencode-go
-OPENCODE_GO_API_KEY=你的 OpenCode Go API key
-OPENCODE_GO_BASE_URL=https://opencode.ai/zen/go/v1
-OPENCODE_GO_VISION_MODEL=mimo-v2.5
-OPENCODE_GO_MAX_TOKENS=2000
-
-OPENAI_API_KEY=
-OPENAI_VISION_MODEL=gpt-4.1-mini
-GOOGLE_BOOKS_API_KEY=
-HOME_BOOK_STORE_DB_PATH=.data/home-book-store.sqlite
-```
-
-舊的 `BOOK_STORE_*` 環境變數仍可用，方便本機舊設定過渡。
-
-## Desktop App
-
-開發模式：
+## Desktop
 
 ```bash
 npm run desktop
 ```
 
-打包：
+打包 installer：
 
 ```bash
 npm run dist:mac
 npm run dist:win
 ```
 
-產物會輸出到 `dist/`：
+## 設定
 
-- macOS Apple Silicon: `dist/Home Book Store-0.1.0-arm64.dmg`
-- Windows x64: `dist/Home Book Store Setup 0.1.0.exe`
+直接用 app 內的「設定」頁。
 
-Desktop app 會把資料庫與上傳圖片放在系統 app data 目錄，不寫入安裝目錄。
+- 必填：目前 Vision provider 的 API key。
+- 選填：Google Books API key。
+- 進階：base URL、model、max tokens。
 
-移除：
-
-- macOS：刪除 `Home Book Store.app`；如要清資料，再刪除 `~/Library/Application Support/Home Book Store`
-- Windows：用「新增或移除程式」解除安裝；設定與資料預設會保留，避免誤刪藏書庫
+不要 commit `.env.local`、API key、`.data/`、`public/uploads/`、`dist/`。
 
 ## 驗證
 
@@ -87,19 +61,6 @@ npm run typecheck
 npm run build
 ```
 
-## 隱私與安全
+## 授權
 
-這個 repository 是公開的。不要 commit：
-
-- `.env.local`
-- API key
-- `.data/`
-- `public/uploads/`
-- `dist/`
-
-Vision 分析會把上傳圖片送到你設定的 Vision provider。
-
-## Notes
-
-- OpenCode Go 使用 chat completions endpoint：`https://opencode.ai/zen/go/v1/chat/completions`。
-- metadata 來源目前走免費 public endpoint 或 HTML scrape。
+MIT。見 [LICENSE](./LICENSE)。
