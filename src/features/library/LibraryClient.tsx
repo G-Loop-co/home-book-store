@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Search, UploadCloud } from "lucide-react";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Book } from "@/lib/types";
 
 interface BooksResponse {
@@ -10,6 +11,7 @@ interface BooksResponse {
 }
 
 export function LibraryClient(): React.ReactElement {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +24,7 @@ export function LibraryClient(): React.ReactElement {
       fetch(`/api/books?owned=1&query=${encodeURIComponent(query)}`, { signal: controller.signal })
         .then(async (response) => {
           if (!response.ok) {
-            throw new Error("藏書讀取失敗");
+            throw new Error(t("libraryReadFailed"));
           }
           return (await response.json()) as BooksResponse;
         })
@@ -34,7 +36,7 @@ export function LibraryClient(): React.ReactElement {
           if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
             return;
           }
-          setError(fetchError instanceof Error ? fetchError.message : "藏書讀取失敗");
+          setError(fetchError instanceof Error ? fetchError.message : t("libraryReadFailed"));
         })
         .finally(() => setLoading(false));
     }, 180);
@@ -43,43 +45,43 @@ export function LibraryClient(): React.ReactElement {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, t]);
 
   return (
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">Library</p>
-          <h1>家中藏書</h1>
+          <p className="eyebrow">{t("libraryEyebrow")}</p>
+          <h1>{t("libraryTitle")}</h1>
         </div>
         <Link className="button primary" href="/import">
           <UploadCloud size={18} aria-hidden="true" />
-          匯入照片
+          {t("importPhotos")}
         </Link>
       </section>
 
       <section className="toolbar">
-        <label className="input" aria-label="搜尋藏書">
+        <label className="input" aria-label={t("searchLibraryAria")}>
           <Search size={16} aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜尋書名、作者、ISBN"
-            style={{ width: "calc(100% - 28px)", border: 0, outline: 0, background: "transparent", marginLeft: 8 }}
+            placeholder={t("searchLibraryPlaceholder")}
+            style={{ width: "calc(100% - 28px)", border: 0, outline: 0, background: "transparent", marginInlineStart: 8 }}
           />
         </label>
         <span className="badge ok">
           <CheckCircle2 size={14} aria-hidden="true" />
-          {books.length} 本
+          {t("bookCount", { count: books.length })}
         </span>
       </section>
 
       {error ? <div className="notice error">{error}</div> : null}
 
       {loading ? (
-        <div className="empty">載入中</div>
+        <div className="empty">{t("loading")}</div>
       ) : books.length === 0 ? (
-        <div className="empty">未有藏書</div>
+        <div className="empty">{t("noBooks")}</div>
       ) : (
         <section className="grid">
           {books.map((book) => (
@@ -96,16 +98,16 @@ export function LibraryClient(): React.ReactElement {
               <div>
                 <div className="book-title">{book.title}</div>
                 <div className="book-meta">
-                  <span>{book.authors.join(", ") || "作者未明"}</span>
-                  <span>{[book.publisher, book.publishedDate].filter(Boolean).join(" · ") || "出版資料未明"}</span>
-                  <span>{book.isbn13 || book.isbn10 || "ISBN 未明"}</span>
+                  <span>{book.authors.join(", ") || t("authorUnknown")}</span>
+                  <span>{[book.publisher, book.publishedDate].filter(Boolean).join(" · ") || t("publishUnknown")}</span>
+                  <span>{book.isbn13 || book.isbn10 || t("isbnUnknown")}</span>
                 </div>
                 <div className="badge-row">
                   <span className="badge ok">
                     <CheckCircle2 size={13} aria-hidden="true" />
-                    已擁有
+                    {t("owned")}
                   </span>
-                  {book.ownedCount > 1 ? <span className="badge">{book.ownedCount} 本副本</span> : null}
+                  {book.ownedCount > 1 ? <span className="badge">{t("copyCount", { count: book.ownedCount })}</span> : null}
                 </div>
               </div>
             </Link>

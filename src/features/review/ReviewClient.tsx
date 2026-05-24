@@ -13,6 +13,7 @@ import {
   Sparkles
 } from "lucide-react";
 import type { CSSProperties } from "react";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { ImportBatchDetail, ImportItem, MetadataCandidate } from "@/lib/types";
 
 interface ReviewClientProps {
@@ -29,13 +30,13 @@ type BulkLookupState = {
   errors: number;
 };
 
-function statusLabel(status: ImportItem["status"]): string {
+function statusLabel(status: ImportItem["status"], t: ReturnType<typeof useI18n>["t"]): string {
   const labels: Record<ImportItem["status"], string> = {
-    pending_lookup: "待查資料",
-    needs_review: "待確認",
-    confirmed: "已匯入",
-    duplicate: "已擁有",
-    rejected: "已略過"
+    pending_lookup: t("statusPendingLookup"),
+    needs_review: t("statusNeedsReview"),
+    confirmed: t("statusConfirmed"),
+    duplicate: t("statusDuplicate"),
+    rejected: t("statusRejected")
   };
   return labels[status];
 }
@@ -86,6 +87,7 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<ImportBatchDetail | null>(null);
   const [edits, setEdits] = useState<Edits>({});
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -109,11 +111,11 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       const data = await readJson<ImportBatchDetail>(response);
       setDetail(data);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "批次讀取失敗");
+      setError(refreshError instanceof Error ? refreshError.message : t("batchReadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [batchId]);
+  }, [batchId, t]);
 
   useEffect(() => {
     void refresh();
@@ -286,7 +288,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     try {
       await lookupItemMetadata(item);
     } catch (lookupError) {
-      setError(lookupError instanceof Error ? lookupError.message : "資料查詢失敗");
+      setError(lookupError instanceof Error ? lookupError.message : t("metadataLookupFailed"));
     } finally {
       setBusyItemId("");
     }
@@ -296,7 +298,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     const targets = items.filter(needsMetadataLookup);
     if (targets.length === 0) {
       if (!automatic) {
-        setBulkLookup({ active: false, done: 0, total: 0, label: "沒有待查資料", errors: 0 });
+        setBulkLookup({ active: false, done: 0, total: 0, label: t("noMetadataToLookup"), errors: 0 });
       }
       return;
     }
@@ -308,7 +310,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       active: true,
       done: 0,
       total: targets.length,
-      label: automatic ? "自動查資料" : "查全部資料",
+      label: automatic ? t("autoLookup") : t("lookupAll"),
       errors: 0
     });
 
@@ -319,7 +321,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       setBulkLookup((current) => ({
         ...current,
         done: index,
-        label: `Cross-source 查資料：${title}`
+        label: t("crossSourceLookupBook", { title })
       }));
 
       try {
@@ -340,11 +342,11 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       active: false,
       done: targets.length,
       total: targets.length,
-      label: failures > 0 ? `${failures} 本查資料失敗，已保留手動欄位` : "資料查詢完成",
+      label: failures > 0 ? t("lookupFailures", { count: failures }) : t("lookupComplete"),
       errors: failures
     });
     if (failures > 0 && !automatic) {
-      setError(`${failures} 本查資料失敗，已保留手動欄位`);
+      setError(t("lookupFailures", { count: failures }));
     }
   }
 
@@ -369,7 +371,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     const candidate = candidateWithEdits(item, baseCandidate);
 
     if (!candidate.title) {
-      setError("書名不可留空");
+      setError(t("titleRequired"));
       return;
     }
 
@@ -384,7 +386,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       const data = await readJson<{ item: ImportItem }>(response);
       updateItem(data.item);
     } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "匯入失敗");
+      setError(confirmError instanceof Error ? confirmError.message : t("importFailed"));
     } finally {
       setBusyItemId("");
     }
@@ -400,7 +402,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       const data = await readJson<{ item: ImportItem }>(response);
       updateItem(data.item);
     } catch (rejectError) {
-      setError(rejectError instanceof Error ? rejectError.message : "略過失敗");
+      setError(rejectError instanceof Error ? rejectError.message : t("rejectFailed"));
     } finally {
       setBusyItemId("");
     }
@@ -410,8 +412,8 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">Review</p>
-          <h1>確認匯入</h1>
+          <p className="eyebrow">{t("reviewEyebrow")}</p>
+          <h1>{t("reviewTitle")}</h1>
         </div>
         <div className="actions">
           <button
@@ -419,18 +421,18 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
             type="button"
             onClick={() => lookupMissingMetadata()}
             disabled={loading || bulkLookup.active || lookupableCount === 0}
-            title="查全部資料"
+            title={t("lookupAll")}
           >
             {bulkLookup.active ? <Loader2 size={17} aria-hidden="true" /> : <Search size={17} aria-hidden="true" />}
-            查全部資料
+            {t("lookupAll")}
           </button>
-          <button className="button" type="button" onClick={refresh} disabled={loading} title="重新整理">
+          <button className="button" type="button" onClick={refresh} disabled={loading} title={t("refresh")}>
             <RotateCw size={17} aria-hidden="true" />
-            重新整理
+            {t("refresh")}
           </button>
           <Link className="button primary" href="/">
             <BookCheck size={17} aria-hidden="true" />
-            藏書
+            {t("navLibrary")}
           </Link>
         </div>
       </section>
@@ -456,7 +458,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round((bulkLookup.done / bulkLookup.total) * 100)}
-            aria-label="資料查詢進度"
+            aria-label={t("lookupProgressAria")}
           >
             <span style={{ width: `${(bulkLookup.done / bulkLookup.total) * 100}%` }} />
           </div>
@@ -464,16 +466,16 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
       ) : null}
 
       {loading || !detail ? (
-        <div className="empty">載入中</div>
+        <div className="empty">{t("loading")}</div>
       ) : detail.items.length === 0 ? (
-        <div className="empty">未辨識到書脊</div>
+        <div className="empty">{t("noSpines")}</div>
       ) : (
         <section className="review-layout">
           <div className="image-stack">
             {imageGroups.map((group) => (
               <article className="image-panel" key={group.imagePath}>
                 <div className="image-frame">
-                  <img src={group.imagePath} alt="書架照片" />
+                  <img src={group.imagePath} alt={t("bookshelfPhotoAlt")} />
                   {group.items.map((item) =>
                     item.bbox ? (
                       <span
@@ -493,9 +495,9 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
               <article className="review-card" key={item.id}>
                 <div className="review-card-head">
                   <div>
-                    <h2>#{index + 1} {editValue(item, "title") || item.spineText || "未命名"}</h2>
+                    <h2>#{index + 1} {editValue(item, "title") || item.spineText || t("unnamed")}</h2>
                     <div className="badge-row">
-                      <span className={item.status === "duplicate" ? "badge ok" : "badge"}>{statusLabel(item.status)}</span>
+                      <span className={item.status === "duplicate" ? "badge ok" : "badge"}>{statusLabel(item.status, t)}</span>
                       <span className="badge">
                         <Sparkles size={13} aria-hidden="true" />
                         {Math.round(item.confidence * 100)}%
@@ -509,31 +511,31 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
                     className="input full"
                     value={editValue(item, "title")}
                     onChange={(event) => setEdit(item.id, "title", event.target.value)}
-                    placeholder="書名"
+                    placeholder={t("titleField")}
                   />
                   <input
                     className="input full"
                     value={editValue(item, "author")}
                     onChange={(event) => setEdit(item.id, "author", event.target.value)}
-                    placeholder="作者"
+                    placeholder={t("authorField")}
                   />
                   <input
                     className="input full"
                     value={editValue(item, "publisher")}
                     onChange={(event) => setEdit(item.id, "publisher", event.target.value)}
-                    placeholder="出版社"
+                    placeholder={t("publisherField")}
                   />
                   <input
                     className="input full"
                     value={editValue(item, "isbn")}
                     onChange={(event) => setEdit(item.id, "isbn", event.target.value)}
-                    placeholder="ISBN"
+                    placeholder={t("isbnField")}
                   />
                   <textarea
                     className="input textarea full wide"
                     value={editValue(item, "description")}
                     onChange={(event) => setEdit(item.id, "description", event.target.value)}
-                    placeholder="簡介"
+                    placeholder={t("descriptionField")}
                   />
                 </div>
 
@@ -546,9 +548,9 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
                       onChange={() => setSelected((current) => ({ ...current, [item.id]: `manual-${item.id}` }))}
                     />
                     <span className="candidate-main">
-                      <span className="candidate-title">使用手動欄位</span>
+                      <span className="candidate-title">{t("useManualFields")}</span>
                       <br />
-                      <span className="muted">{manualCandidate(item).authors.join(", ") || "作者未明"}</span>
+                      <span className="muted">{manualCandidate(item).authors.join(", ") || t("authorUnknown")}</span>
                     </span>
                   </label>
 
@@ -574,7 +576,7 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
                           {candidate.ownedBookId ? (
                             <span className="badge ok">
                               <CheckCircle2 size={13} aria-hidden="true" />
-                              已擁有
+                              {t("owned")}
                             </span>
                           ) : null}
                         </span>
@@ -584,29 +586,29 @@ export function ReviewClient({ batchId }: ReviewClientProps): React.ReactElement
                 </div>
 
                 <div className="actions">
-                  <button className="button" type="button" onClick={() => lookup(item)} disabled={bulkLookup.active || busyItemId === item.id} title="查資料">
+                  <button className="button" type="button" onClick={() => lookup(item)} disabled={bulkLookup.active || busyItemId === item.id} title={t("lookupMetadata")}>
                     {busyItemId === item.id ? <Loader2 size={17} aria-hidden="true" /> : <Search size={17} aria-hidden="true" />}
-                    查資料
+                    {t("lookupMetadata")}
                   </button>
                   <button
                     className="button primary"
                     type="button"
                     onClick={() => confirm(item)}
                     disabled={bulkLookup.active || busyItemId === item.id || item.status === "confirmed" || item.status === "duplicate"}
-                    title="匯入"
+                    title={t("importBook")}
                   >
                     <BookCheck size={17} aria-hidden="true" />
-                    匯入
+                    {t("importBook")}
                   </button>
                   <button
                     className="button warn"
                     type="button"
                     onClick={() => reject(item)}
                     disabled={bulkLookup.active || busyItemId === item.id || item.status === "rejected"}
-                    title="略過"
+                    title={t("skip")}
                   >
                     <SkipForward size={17} aria-hidden="true" />
-                    略過
+                    {t("skip")}
                   </button>
                 </div>
               </article>

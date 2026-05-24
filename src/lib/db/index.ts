@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { cleanIsbn, normalizeBookKey } from "@/lib/books/duplicates";
+import { normalizeUiLanguage } from "@/lib/i18n";
 import { dataDirectory } from "@/lib/runtime-paths";
 import type {
   AppSettings,
@@ -155,6 +156,7 @@ function normalizeVisionProvider(value: string | undefined): AppSettings["vision
 
 function defaultAppSettings(): AppSettings {
   return {
+    uiLanguage: normalizeUiLanguage(process.env.UI_LANGUAGE),
     visionProvider: normalizeVisionProvider(process.env.VISION_PROVIDER),
     visionApiKey: process.env.VISION_API_KEY || "",
     opencodeGoApiKey: process.env.OPENCODE_GO_API_KEY || process.env.VISION_API_KEY || "",
@@ -168,6 +170,7 @@ function defaultAppSettings(): AppSettings {
 }
 
 const appSettingKeys = new Set<keyof AppSettings>([
+  "uiLanguage",
   "visionProvider",
   "visionApiKey",
   "opencodeGoApiKey",
@@ -193,6 +196,10 @@ export function getAppSettings(): AppSettings {
       settings.visionProvider = normalizeVisionProvider(asString(row.value));
       continue;
     }
+    if (key === "uiLanguage") {
+      settings.uiLanguage = normalizeUiLanguage(asString(row.value));
+      continue;
+    }
 
     settings[key] = asString(row.value) as never;
   }
@@ -212,7 +219,12 @@ export function saveAppSettings(input: Partial<AppSettings>): AppSettings {
     if (!appSettingKeys.has(key as keyof AppSettings)) {
       continue;
     }
-    const value = key === "visionProvider" ? normalizeVisionProvider(String(rawValue)) : String(rawValue ?? "");
+    const value =
+      key === "visionProvider"
+        ? normalizeVisionProvider(String(rawValue))
+        : key === "uiLanguage"
+          ? normalizeUiLanguage(String(rawValue))
+          : String(rawValue ?? "");
     statement.run(key, value, timestamp);
   }
 

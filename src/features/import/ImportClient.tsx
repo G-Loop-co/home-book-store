@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ImagePlus, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { ImportBatch } from "@/lib/types";
 
 interface CreateBatchResponse {
@@ -13,6 +14,7 @@ interface CreateBatchResponse {
 type WorkflowPhase = "idle" | "uploading" | "analyzing" | "complete" | "error";
 
 export function ImportClient(): React.ReactElement {
+  const { t } = useI18n();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -45,7 +47,7 @@ export function ImportClient(): React.ReactElement {
   function acceptFiles(nextFiles: File[]): void {
     const images = nextFiles.filter((file) => file.type.startsWith("image/"));
     if (images.length !== nextFiles.length) {
-      setError("只可加入圖片檔");
+      setError(t("imagesOnlyError"));
     } else {
       setError("");
     }
@@ -99,8 +101,8 @@ export function ImportClient(): React.ReactElement {
 
   async function createBatch(): Promise<ImportBatch> {
     if (files.length === 0) {
-      setError("未選擇圖片");
-      throw new Error("未選擇圖片");
+      setError(t("noImagesSelected"));
+      throw new Error(t("noImagesSelected"));
     }
 
     const formData = new FormData();
@@ -114,7 +116,7 @@ export function ImportClient(): React.ReactElement {
     });
     const data = (await response.json()) as CreateBatchResponse;
     if (!response.ok) {
-      throw new Error(data.error || "上傳失敗");
+      throw new Error(data.error || t("uploadFailed"));
     }
     setBatch(data.batch);
     return data.batch;
@@ -122,7 +124,7 @@ export function ImportClient(): React.ReactElement {
 
   async function analyze(): Promise<void> {
     if (!batch && files.length === 0) {
-      setError("未選擇圖片");
+      setError(t("noImagesSelected"));
       return;
     }
 
@@ -130,7 +132,7 @@ export function ImportClient(): React.ReactElement {
     setError("");
     setPhase(batch ? "analyzing" : "uploading");
     setProgress(batch ? 40 : 8);
-    setProgressLabel(batch ? "準備送出 Vision 分析" : "先上傳圖片");
+    setProgressLabel(batch ? t("prepareVision") : t("uploadImagesFirst"));
 
     let progressTimer: number | undefined;
 
@@ -138,11 +140,11 @@ export function ImportClient(): React.ReactElement {
       const activeBatch = batch ?? (await createBatch());
       setPhase("analyzing");
       setProgress(42);
-      setProgressLabel("Vision 正在閱讀書脊");
+      setProgressLabel(t("visionReading"));
       progressTimer = window.setInterval(() => {
         setProgress((current) => {
           if (current >= 68) {
-            setProgressLabel("Cross-source 正在查資料");
+            setProgressLabel(t("crossSourceLookup"));
           }
           if (current < 68) {
             return current + 4;
@@ -159,16 +161,16 @@ export function ImportClient(): React.ReactElement {
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(data.error || "Vision 分析失敗");
+        throw new Error(data.error || t("visionFailed"));
       }
       setPhase("complete");
       setProgress(100);
-      setProgressLabel("分析完成，前往確認頁");
+      setProgressLabel(t("analysisComplete"));
       router.push(`/review/${activeBatch.id}`);
     } catch (analyzeError) {
-      setError(analyzeError instanceof Error ? analyzeError.message : "Vision 分析失敗");
+      setError(analyzeError instanceof Error ? analyzeError.message : t("visionFailed"));
       setPhase("error");
-      setProgressLabel("Vision 分析失敗");
+      setProgressLabel(t("visionFailed"));
     } finally {
       if (progressTimer !== undefined) {
         window.clearInterval(progressTimer);
@@ -181,8 +183,8 @@ export function ImportClient(): React.ReactElement {
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">Import</p>
-          <h1>匯入書架照片</h1>
+          <p className="eyebrow">{t("importEyebrow")}</p>
+          <h1>{t("importTitle")}</h1>
         </div>
       </section>
 
@@ -202,9 +204,9 @@ export function ImportClient(): React.ReactElement {
         >
           <div className="dropzone-content">
             <ImagePlus size={36} aria-hidden="true" />
-            <p>拖放書架圖片</p>
+            <p>{t("dropImages")}</p>
             <button className="button" type="button" onClick={() => inputRef.current?.click()}>
-              選擇圖片
+              {t("chooseImages")}
             </button>
             <input
               ref={inputRef}
@@ -218,15 +220,15 @@ export function ImportClient(): React.ReactElement {
         </div>
 
         <div className="preview-head">
-          <h2>圖片預覽</h2>
-          <span className="badge">{files.length} 張 · {Math.ceil(totalSize / 1024)} KB</span>
+          <h2>{t("previewTitle")}</h2>
+          <span className="badge">{t("selectedImagesStats", { count: files.length, kb: Math.ceil(totalSize / 1024) })}</span>
         </div>
 
         <div className="preview-grid" aria-live="polite">
           {files.length === 0 ? (
             <div className="preview-empty">
               <ImagePlus size={24} aria-hidden="true" />
-              <span>未選圖片</span>
+              <span>{t("noImages")}</span>
             </div>
           ) : (
             files.map((file, index) => (
@@ -236,7 +238,7 @@ export function ImportClient(): React.ReactElement {
                   <span>{file.name}</span>
                   <small>{Math.ceil(file.size / 1024)} KB</small>
                 </figcaption>
-                <button className="icon-button preview-remove" type="button" onClick={() => removeFile(index)} title="移除圖片">
+                <button className="icon-button preview-remove" type="button" onClick={() => removeFile(index)} title={t("removeImage")}>
                   <Trash2 size={16} aria-hidden="true" />
                 </button>
               </figure>
@@ -256,7 +258,7 @@ export function ImportClient(): React.ReactElement {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(progress)}
-              aria-label="匯入進度"
+              aria-label={t("importProgressAria")}
             >
               <span style={{ width: `${progress}%` }} />
             </div>
@@ -264,9 +266,9 @@ export function ImportClient(): React.ReactElement {
         ) : null}
 
         <div className="actions">
-          <button className="button primary" type="button" onClick={analyze} disabled={busy || (files.length === 0 && !batch)} title="Vision 分析">
+          <button className="button primary" type="button" onClick={analyze} disabled={busy || (files.length === 0 && !batch)} title={t("visionAnalyze")}>
             {busy ? <Loader2 size={17} aria-hidden="true" /> : <Sparkles size={17} aria-hidden="true" />}
-            {phase === "analyzing" ? "分析中" : "Vision 分析"}
+            {phase === "analyzing" ? t("analyzing") : t("visionAnalyze")}
           </button>
         </div>
       </section>

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { confirmImportItem, createImportBatch, deleteBook, getBook, listBooks, replaceImportItems, updateBook } from "@/lib/db";
+import { confirmImportItem, createImportBatch, deleteBook, getAppSettings, getBook, listBooks, replaceImportItems, saveAppSettings, updateBook } from "@/lib/db";
 import type { MetadataCandidate, VisionBook } from "@/lib/types";
 
 beforeAll(() => {
@@ -35,6 +35,13 @@ const candidate: MetadataCandidate = {
 };
 
 describe("SQLite import confirmation", () => {
+  it("persists the UI language setting", () => {
+    expect(getAppSettings().uiLanguage).toBe("zh-Hant");
+    expect(saveAppSettings({ uiLanguage: "en" }).uiLanguage).toBe("en");
+    expect(getAppSettings().uiLanguage).toBe("en");
+    expect(saveAppSettings({ uiLanguage: "not-supported" as never }).uiLanguage).toBe("zh-Hant");
+  });
+
   it("does not create duplicate books when confirming the same ISBN twice", () => {
     const imagePath = "/uploads/imports/test/books.jpg";
     const batch = createImportBatch([imagePath], `test-${randomUUID()}`);

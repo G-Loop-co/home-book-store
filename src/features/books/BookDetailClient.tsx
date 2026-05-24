@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, CheckCircle2, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
+import { useI18n } from "@/features/i18n/I18nProvider";
 import type { Book } from "@/lib/types";
 
 interface BookDetailClientProps {
@@ -54,6 +55,7 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function BookDetailClient({ bookId }: BookDetailClientProps): React.ReactElement {
+  const { t } = useI18n();
   const router = useRouter();
   const [book, setBook] = useState<Book | null>(null);
   const [form, setForm] = useState<BookForm | null>(null);
@@ -78,7 +80,7 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
         if (loadError instanceof DOMException && loadError.name === "AbortError") {
           return;
         }
-        setError(loadError instanceof Error ? loadError.message : "藏書讀取失敗");
+        setError(loadError instanceof Error ? loadError.message : t("bookReadFailed"));
       } finally {
         setLoading(false);
       }
@@ -86,7 +88,7 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
 
     void loadBook();
     return () => controller.abort();
-  }, [bookId]);
+  }, [bookId, t]);
 
   function update(field: keyof BookForm, value: string): void {
     setForm((current) => (current ? { ...current, [field]: value } : current));
@@ -105,7 +107,7 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
       return;
     }
     if (!form.title.trim()) {
-      setError("書名不可留空");
+      setError(t("bookTitleRequired"));
       return;
     }
 
@@ -131,14 +133,14 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
       setForm(formFromBook(data.book));
       setEditing(false);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "藏書更新失敗");
+      setError(saveError instanceof Error ? saveError.message : t("bookUpdateFailed"));
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteCurrentBook(): Promise<void> {
-    if (!book || !window.confirm(`刪除「${book.title}」？`)) {
+    if (!book || !window.confirm(t("deleteConfirm", { title: book.title }))) {
       return;
     }
 
@@ -150,13 +152,13 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
       router.push("/");
       router.refresh();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "藏書刪除失敗");
+      setError(deleteError instanceof Error ? deleteError.message : t("bookDeleteFailed"));
       setDeleting(false);
     }
   }
 
   if (loading) {
-    return <div className="empty">載入中</div>;
+    return <div className="empty">{t("loading")}</div>;
   }
 
   if (!book || !form) {
@@ -164,9 +166,9 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
       <>
         <Link className="button" href="/">
           <ArrowLeft size={17} aria-hidden="true" />
-          返回藏書
+          {t("backToLibrary")}
         </Link>
-        <div className="empty">找不到藏書</div>
+        <div className="empty">{t("bookNotFound")}</div>
       </>
     );
   }
@@ -175,34 +177,34 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
     <>
       <section className="page-head">
         <div>
-          <p className="eyebrow">Book</p>
+          <p className="eyebrow">{t("bookEyebrow")}</p>
           <h1>{book.title}</h1>
         </div>
         <div className="actions">
           <Link className="button" href="/">
             <ArrowLeft size={17} aria-hidden="true" />
-            返回
+            {t("back")}
           </Link>
           {editing ? (
             <>
               <button className="button primary" type="button" onClick={save} disabled={saving}>
                 {saving ? <Loader2 size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
-                儲存
+                {t("save")}
               </button>
               <button className="button" type="button" onClick={cancelEdit} disabled={saving}>
                 <X size={17} aria-hidden="true" />
-                取消
+                {t("cancel")}
               </button>
             </>
           ) : (
             <button className="button" type="button" onClick={() => setEditing(true)}>
               <Pencil size={17} aria-hidden="true" />
-              編輯
+              {t("edit")}
             </button>
           )}
           <button className="button danger" type="button" onClick={deleteCurrentBook} disabled={deleting || saving}>
             {deleting ? <Loader2 size={17} aria-hidden="true" /> : <Trash2 size={17} aria-hidden="true" />}
-            刪除
+            {t("delete")}
           </button>
         </div>
       </section>
@@ -224,35 +226,35 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
           {editing ? (
             <div className="detail-form">
               <label className="field">
-                書名
+                {t("fieldTitle")}
                 <input className="input full" value={form.title} onChange={(event) => update("title", event.target.value)} />
               </label>
               <label className="field">
-                作者
+                {t("fieldAuthors")}
                 <input className="input full" value={form.authors} onChange={(event) => update("authors", event.target.value)} />
               </label>
               <label className="field">
-                出版社
+                {t("fieldPublisher")}
                 <input className="input full" value={form.publisher} onChange={(event) => update("publisher", event.target.value)} />
               </label>
               <label className="field">
-                出版日期
+                {t("fieldPublishedDate")}
                 <input className="input full" value={form.publishedDate} onChange={(event) => update("publishedDate", event.target.value)} />
               </label>
               <label className="field">
-                ISBN-10
+                {t("fieldIsbn10")}
                 <input className="input full" value={form.isbn10} onChange={(event) => update("isbn10", event.target.value)} />
               </label>
               <label className="field">
-                ISBN-13
+                {t("fieldIsbn13")}
                 <input className="input full" value={form.isbn13} onChange={(event) => update("isbn13", event.target.value)} />
               </label>
               <label className="field wide">
-                封面 URL
+                {t("fieldCoverUrl")}
                 <input className="input full" value={form.coverUrl} onChange={(event) => update("coverUrl", event.target.value)} />
               </label>
               <label className="field wide">
-                簡介
+                {t("fieldDescription")}
                 <textarea className="input textarea full" value={form.description} onChange={(event) => update("description", event.target.value)} />
               </label>
             </div>
@@ -261,31 +263,31 @@ export function BookDetailClient({ bookId }: BookDetailClientProps): React.React
               <div className="badge-row">
                 <span className="badge ok">
                   <CheckCircle2 size={13} aria-hidden="true" />
-                  已擁有
+                  {t("owned")}
                 </span>
-                {book.ownedCount > 1 ? <span className="badge">{book.ownedCount} 本副本</span> : null}
+                {book.ownedCount > 1 ? <span className="badge">{t("copyCount", { count: book.ownedCount })}</span> : null}
               </div>
               <dl className="detail-list">
                 <div>
-                  <dt>作者</dt>
-                  <dd>{book.authors.join(", ") || "作者未明"}</dd>
+                  <dt>{t("authorsLabel")}</dt>
+                  <dd>{book.authors.join(", ") || t("authorUnknown")}</dd>
                 </div>
                 <div>
-                  <dt>出版</dt>
-                  <dd>{[book.publisher, book.publishedDate].filter(Boolean).join(" · ") || "出版資料未明"}</dd>
+                  <dt>{t("publishingLabel")}</dt>
+                  <dd>{[book.publisher, book.publishedDate].filter(Boolean).join(" · ") || t("publishUnknown")}</dd>
                 </div>
                 <div>
-                  <dt>ISBN</dt>
-                  <dd>{book.isbn13 || book.isbn10 || "ISBN 未明"}</dd>
+                  <dt>{t("isbnLabel")}</dt>
+                  <dd>{book.isbn13 || book.isbn10 || t("isbnUnknown")}</dd>
                 </div>
                 <div>
-                  <dt>來源</dt>
-                  <dd>{book.source || "手動"}</dd>
+                  <dt>{t("sourceLabel")}</dt>
+                  <dd>{book.source || t("manualSource")}</dd>
                 </div>
               </dl>
               <section className="description-block">
-                <h2>簡介</h2>
-                <p>{book.description || "未有簡介"}</p>
+                <h2>{t("descriptionHeading")}</h2>
+                <p>{book.description || t("noDescription")}</p>
               </section>
             </div>
           )}

@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const settingsSchema = z.object({
+  uiLanguage: z.enum(["zh-Hant", "zh-Hans", "en", "ja", "ko", "es", "fr", "de", "pt", "ar", "hi"]).optional(),
   visionProvider: z.enum(["opencode-go", "openai"]).optional(),
   visionApiKey: z.string().optional(),
   opencodeGoApiKey: z.string().optional(),

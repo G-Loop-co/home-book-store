@@ -37,8 +37,21 @@ export interface VisionResult {
 }
 
 export type VisionProviderName = "opencode-go" | "openai";
+export type UiLanguage =
+  | "zh-Hant"
+  | "zh-Hans"
+  | "en"
+  | "ja"
+  | "ko"
+  | "es"
+  | "fr"
+  | "de"
+  | "pt"
+  | "ar"
+  | "hi";
 
 export interface AppSettings {
+  uiLanguage: UiLanguage;
   visionProvider: VisionProviderName;
   visionApiKey: string;
   opencodeGoApiKey: string;
