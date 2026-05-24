@@ -48,3 +48,12 @@ export async function imageDataUrl(imagePath: string): Promise<string> {
   const imageBuffer = await readFile(filePath);
   return `data:${mimeTypeForPath(filePath)};base64,${imageBuffer.toString("base64")}`;
 }
+
+export async function imageBase64(imagePath: string): Promise<{ data: string; mimeType: string }> {
+  const filePath = publicImagePath(imagePath);
+  const imageBuffer = await readFile(filePath);
+  return {
+    data: imageBuffer.toString("base64"),
+    mimeType: mimeTypeForPath(filePath)
+  };
+}

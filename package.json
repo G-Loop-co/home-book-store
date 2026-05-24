@@ -38,18 +38,39 @@
   "build": {
     "appId": "local.home-book-store",
     "productName": "Home Book Store",
-    "asar": false,
+    "asar": true,
+    "compression": "maximum",
     "directories": {
       "output": "dist"
     },
     "files": [
       ".next/**/*",
+      "!.next/cache/**/*",
+      "!.next/dev/**/*",
+      "!.next/diagnostics/**/*",
+      "!.next/types/**/*",
+      "!.next/trace",
+      "!.next/trace-build",
+      "!.next/turbopack/**/*",
+      "!.next/**/*.nft.json",
+      "!.next/**/*.map",
       "electron/**/*",
       "public/**/*",
-      "src/**/*",
+      "!public/uploads/**/*",
       "next.config.ts",
       "package.json",
-      "node_modules/**/*"
+      "!src/**/*",
+      "!.data/**/*",
+      "!coverage/**/*",
+      "!test-results/**/*",
+      "!node_modules/**/*.d.ts",
+      "!node_modules/**/*.d.mts",
+      "!node_modules/**/*.d.cts",
+      "!node_modules/**/*.map",
+      "!**/*.test.*",
+      "!**/*.spec.*",
+      "!**/__tests__/**/*",
+      "!**/.DS_Store"
     ],
     "mac": {
       "target": "dmg",

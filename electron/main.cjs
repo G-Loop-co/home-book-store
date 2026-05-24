@@ -5,6 +5,13 @@ const next = require("next");
 
 const PORT = Number(process.env.BOOK_STORE_DESKTOP_PORT || 31230);
 let server;
+let mainWindow;
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 function configureRuntimePaths() {
   const userData = app.getPath("userData");
@@ -45,7 +52,7 @@ async function startNextServer() {
 }
 
 function createWindow() {
-  const window = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 900,
     minWidth: 980,
@@ -59,15 +66,20 @@ function createWindow() {
     }
   });
 
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
   });
 
-  window.loadURL(`http://127.0.0.1:${PORT}`);
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
+  mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
 }
 
 app.whenReady().then(async () => {
+  app.setAppUserModelId("local.home-book-store");
   configureRuntimePaths();
   Menu.setApplicationMenu(null);
   await startNextServer();
@@ -78,6 +90,18 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
+});
+
+app.on("second-instance", () => {
+  if (!mainWindow) {
+    createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.focus();
 });
 
 app.on("window-all-closed", () => {
