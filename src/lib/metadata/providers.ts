@@ -35,11 +35,35 @@ function firstValue(value: unknown): string {
   return asString(value);
 }
 
+function lastValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return asString(value[value.length - 1]);
+  }
+  return asString(value);
+}
+
 async function getJson(url: string): Promise<JsonObject> {
   const response = await fetch(url, {
     headers: {
       accept: "application/json",
       "user-agent": "HomeBookStore/0.1"
+    },
+    signal: AbortSignal.timeout(9000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Metadata request failed: ${response.status}`);
+  }
+
+  return asObject(await response.json());
+}
+
+async function getJsonWithHeaders(url: string, headers: Record<string, string>): Promise<JsonObject> {
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "HomeBookStore/0.1",
+      ...headers
     },
     signal: AbortSignal.timeout(9000)
   });
@@ -101,6 +125,29 @@ function normalizeCandidate(candidate: Omit<MetadataCandidate, "id" | "score">, 
   return {
     ...candidateWithId,
     score: scoreCandidate(input, candidateWithId)
+  };
+}
+
+function normalizePublishedDate(value: string): string {
+  const digits = value.replace(/[^0-9]/g, "");
+  if (digits.length >= 8) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  }
+  if (digits.length >= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}`;
+  }
+  return value.trim();
+}
+
+function isbnFromText(value: string): string {
+  return extractIsbn(value) || cleanIsbn(value);
+}
+
+function isbnPairFromText(value: string): { isbn10: string; isbn13: string } {
+  const values = [value, ...value.split(/\s+/u)].map((entry) => isbnFromText(entry)).filter(Boolean);
+  return {
+    isbn10: values.find((entry) => entry.length === 10) ?? "",
+    isbn13: values.find((entry) => entry.length === 13) ?? ""
   };
 }
 
@@ -204,6 +251,242 @@ async function lookupGoogleBooks(input: VisionBook, isbn: string): Promise<Metad
 
     const json = await getJson(`https://www.googleapis.com/books/v1/volumes?${params.toString()}`);
     results.push(...asArray(json.items).map((item) => mapGoogleVolume(asObject(item), input)).filter((item): item is MetadataCandidate => Boolean(item)));
+  }
+
+  return results;
+}
+
+export function mapIsbnDbBook(book: JsonObject, input: VisionBook): MetadataCandidate | null {
+  const title = asString(book.title_long) || asString(book.title);
+  if (!title) {
+    return null;
+  }
+
+  const isbn13 = cleanIsbn(asString(book.isbn13));
+  const isbn10 = cleanIsbn(asString(book.isbn));
+  const authors = asStringArray(book.authors);
+
+  return normalizeCandidate(
+    {
+      title,
+      authors: authors.length > 0 ? authors : splitContributorNames(asString(book.author)),
+      publisher: asString(book.publisher),
+      publishedDate: normalizePublishedDate(asString(book.date_published) || asString(book.publish_date)),
+      isbn10: isbn10.length === 10 ? isbn10 : "",
+      isbn13: isbn13.length === 13 ? isbn13 : "",
+      coverUrl: asString(book.image).replace("http://", "https://"),
+      description: asString(book.synopsis) || asString(book.synopsys) || asString(book.overview) || asString(book.excerpt),
+      source: "isbn_db",
+      sourceId: isbn13 || isbn10 || title
+    },
+    input
+  );
+}
+
+async function lookupIsbnDb(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const key = getAppSettings().isbndbApiKey;
+  if (!key) {
+    return [];
+  }
+
+  if (isbn) {
+    const json = await getIsbnDbJson(`/book/${encodeURIComponent(isbn)}`, key);
+    const candidate = mapIsbnDbBook(asObject(json.book), input);
+    return candidate ? [candidate] : [];
+  }
+
+  const results: MetadataCandidate[] = [];
+  for (const query of searchQueries(input).slice(0, 2)) {
+    const params = new URLSearchParams({
+      pageSize: "5",
+      page: "1"
+    });
+    const json = await getIsbnDbJson(`/books/${encodeURIComponent(query)}?${params.toString()}`, key);
+    results.push(...asArray(json.books).map((book) => mapIsbnDbBook(asObject(book), input)).filter((book): book is MetadataCandidate => Boolean(book)));
+  }
+
+  return results;
+}
+
+async function getIsbnDbJson(pathWithQuery: string, key: string): Promise<JsonObject> {
+  const headers = {
+    Authorization: key,
+    "x-api-key": key
+  };
+  let lastError: unknown;
+
+  for (const baseUrl of ["https://api.isbndb.com", "https://api2.isbndb.com"]) {
+    try {
+      return await getJsonWithHeaders(`${baseUrl}${pathWithQuery}`, headers);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("ISBNdb metadata request failed.");
+}
+
+export function mapNaverBookItem(item: JsonObject, input: VisionBook): MetadataCandidate | null {
+  const title = decodeHtml(asString(item.title));
+  if (!title) {
+    return null;
+  }
+
+  const { isbn10, isbn13 } = isbnPairFromText(asString(item.isbn));
+
+  return normalizeCandidate(
+    {
+      title,
+      authors: splitContributorNames(decodeHtml(asString(item.author)).replace(/\^/g, ",").replace(/\|/g, ",")),
+      publisher: decodeHtml(asString(item.publisher)),
+      publishedDate: normalizePublishedDate(asString(item.pubdate)),
+      isbn10,
+      isbn13,
+      coverUrl: asString(item.image).replace("http://", "https://"),
+      description: decodeHtml(asString(item.description)),
+      source: "naver_books",
+      sourceId: asString(item.link) || isbn13 || isbn10 || title
+    },
+    input
+  );
+}
+
+async function lookupNaverBooks(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const { naverClientId, naverClientSecret } = getAppSettings();
+  if (!naverClientId || !naverClientSecret) {
+    return [];
+  }
+
+  const queries = isbn ? [isbn] : searchQueries(input).map((query) => (input.author ? `${query} ${input.author}` : query));
+  const results: MetadataCandidate[] = [];
+
+  for (const query of queries.slice(0, 3)) {
+    const params = new URLSearchParams({
+      query,
+      display: "5",
+      start: "1"
+    });
+    const json = await getJsonWithHeaders(`https://openapi.naver.com/v1/search/book.json?${params.toString()}`, {
+      "X-Naver-Client-Id": naverClientId,
+      "X-Naver-Client-Secret": naverClientSecret
+    });
+    results.push(...asArray(json.items).map((item) => mapNaverBookItem(asObject(item), input)).filter((item): item is MetadataCandidate => Boolean(item)));
+  }
+
+  return results;
+}
+
+export function mapRakutenBookItem(rawItem: JsonObject, input: VisionBook): MetadataCandidate | null {
+  const item = Object.keys(asObject(rawItem.Item)).length > 0 ? asObject(rawItem.Item) : rawItem;
+  const title = asString(item.title);
+  if (!title) {
+    return null;
+  }
+
+  const isbn = cleanIsbn(asString(item.isbn));
+
+  return normalizeCandidate(
+    {
+      title,
+      authors: splitContributorNames(asString(item.author)),
+      publisher: asString(item.publisherName),
+      publishedDate: normalizePublishedDate(asString(item.salesDate)),
+      isbn10: isbn.length === 10 ? isbn : "",
+      isbn13: isbn.length === 13 ? isbn : "",
+      coverUrl: (asString(item.largeImageUrl) || asString(item.mediumImageUrl) || asString(item.smallImageUrl)).replace("http://", "https://"),
+      description: asString(item.itemCaption),
+      source: "rakuten_books",
+      sourceId: asString(item.itemUrl) || isbn || title
+    },
+    input
+  );
+}
+
+async function lookupRakutenBooks(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const { rakutenApplicationId, rakutenAccessKey } = getAppSettings();
+  if (!rakutenApplicationId || !rakutenAccessKey) {
+    return [];
+  }
+
+  const baseParams = {
+    applicationId: rakutenApplicationId,
+    accessKey: rakutenAccessKey,
+    format: "json",
+    formatVersion: "2",
+    hits: "5"
+  };
+  const requests = isbn
+    ? [{ isbn }]
+    : searchQueries(input)
+        .slice(0, 2)
+        .map((query) => ({
+          title: query,
+          ...(input.author ? { author: input.author } : {})
+        }));
+  const results: MetadataCandidate[] = [];
+
+  for (const request of requests) {
+    const params = new URLSearchParams({
+      ...baseParams,
+      ...request
+    });
+    const json = await getJson(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?${params.toString()}`);
+    results.push(...asArray(json.Items).map((item) => mapRakutenBookItem(asObject(item), input)).filter((item): item is MetadataCandidate => Boolean(item)));
+  }
+
+  return results;
+}
+
+export function mapLibraryOfCongressResult(result: JsonObject, input: VisionBook): MetadataCandidate | null {
+  const title = asString(result.title);
+  if (!title) {
+    return null;
+  }
+
+  const item = asObject(result.item);
+  const isbn = cleanIsbn(asStringArray(result.isbn).join(" ") || extractIsbn(JSON.stringify(result)));
+  const authors =
+    asStringArray(result.contributor_names).length > 0
+      ? asStringArray(result.contributor_names)
+      : asArray(result.contributors).map(asObject).map((contributor) => asString(contributor.title)).filter(Boolean);
+  const description = firstValue(result.description) || firstValue(item.description);
+  const publisher = firstValue(result.publisher) || firstValue(item.publisher);
+  const publishedDate = asString(result.date) || firstValue(item.date);
+  const sourceId = asString(result.id) || asString(result.url) || title;
+
+  return normalizeCandidate(
+    {
+      title,
+      authors,
+      publisher,
+      publishedDate,
+      isbn10: isbn.length === 10 ? isbn : "",
+      isbn13: isbn.length === 13 ? isbn : "",
+      coverUrl: lastValue(result.image_url).replace("http://", "https://"),
+      description,
+      source: "library_of_congress",
+      sourceId
+    },
+    input
+  );
+}
+
+async function lookupLibraryOfCongress(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const queries = isbn ? [isbn] : searchQueries(input).map((query) => (input.author ? `${query} ${input.author}` : query));
+  const results: MetadataCandidate[] = [];
+
+  for (const query of queries.slice(0, 3)) {
+    const params = new URLSearchParams({
+      fo: "json",
+      c: "5",
+      q: query
+    });
+    const json = await getJson(`https://www.loc.gov/books/?${params.toString()}`);
+    results.push(
+      ...asArray(json.results)
+        .map((result) => mapLibraryOfCongressResult(asObject(result), input))
+        .filter((result): result is MetadataCandidate => Boolean(result))
+    );
   }
 
   return results;
@@ -371,6 +654,52 @@ async function lookupIsbnTw(input: VisionBook, isbn: string): Promise<MetadataCa
   return results;
 }
 
+export function mapOpenBdBook(book: JsonObject, input: VisionBook): MetadataCandidate | null {
+  const summary = asObject(book.summary);
+  const title = asString(summary.title);
+  const isbn = cleanIsbn(asString(summary.isbn));
+  if (!title || !isbn) {
+    return null;
+  }
+
+  return normalizeCandidate(
+    {
+      title,
+      authors: splitContributorNames(asString(summary.author)),
+      publisher: asString(summary.publisher),
+      publishedDate: normalizePublishedDate(asString(summary.pubdate)),
+      isbn10: isbn.length === 10 ? isbn : "",
+      isbn13: isbn.length === 13 ? isbn : "",
+      coverUrl: asString(summary.cover).replace("http://", "https://"),
+      description: "",
+      source: "openbd",
+      sourceId: isbn
+    },
+    input
+  );
+}
+
+async function lookupOpenBd(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  if (!isbn) {
+    return [];
+  }
+
+  const json = await fetch(`https://api.openbd.jp/v1/get?isbn=${encodeURIComponent(isbn)}`, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "HomeBookStore/0.1"
+    },
+    signal: AbortSignal.timeout(9000)
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Metadata request failed: ${response.status}`);
+    }
+    return response.json();
+  }) as unknown;
+
+  return asArray(json).map((entry) => mapOpenBdBook(asObject(entry), input)).filter((entry): entry is MetadataCandidate => Boolean(entry));
+}
+
 export function kingstoneProductUrls(searchHtml: string): string[] {
   const urls = new Set<string>();
 
@@ -527,6 +856,100 @@ function absoluteUrl(href: string, baseUrl: string): string {
   } catch {
     return "";
   }
+}
+
+function cqlQuoted(value: string): string {
+  return `"${value.replace(/[\\"]/g, " ").trim()}"`;
+}
+
+function xmlRecords(xml: string): string[] {
+  return Array.from(xml.matchAll(/<(?:[A-Za-z0-9_-]+:)?record\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z0-9_-]+:)?record>/g)).map(
+    (match) => match[1] ?? ""
+  );
+}
+
+function xmlFields(xml: string, tagName: string): string[] {
+  const escaped = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(
+    xml.matchAll(new RegExp(`<(?:[A-Za-z0-9_-]+:)?${escaped}\\b[^>]*>([\\s\\S]*?)<\\/(?:[A-Za-z0-9_-]+:)?${escaped}>`, "gi"))
+  )
+    .map((match) => decodeHtml(match[1] ?? ""))
+    .filter(Boolean);
+}
+
+function firstXmlField(xml: string, tagName: string): string {
+  return xmlFields(xml, tagName)[0] ?? "";
+}
+
+function isbnFromValues(values: string[]): string {
+  return cleanIsbn(values.map((value) => extractIsbn(value)).find(Boolean) ?? values.map(cleanIsbn).find((value) => value.length === 10 || value.length === 13) ?? "");
+}
+
+export function mapSruDcRecord(recordXml: string, source: "bnf" | "dnb", input: VisionBook): MetadataCandidate | null {
+  const title = firstXmlField(recordXml, "title");
+  if (!title) {
+    return null;
+  }
+
+  const identifiers = xmlFields(recordXml, "identifier");
+  const isbn = isbnFromValues(identifiers);
+  const sourceId = identifiers.find((identifier) => !extractIsbn(identifier)) || identifiers[0] || title;
+
+  return normalizeCandidate(
+    {
+      title,
+      authors: xmlFields(recordXml, "creator").flatMap(splitContributorNames),
+      publisher: firstXmlField(recordXml, "publisher"),
+      publishedDate: normalizePublishedDate(firstXmlField(recordXml, "date")),
+      isbn10: isbn.length === 10 ? isbn : "",
+      isbn13: isbn.length === 13 ? isbn : "",
+      coverUrl: "",
+      description: firstXmlField(recordXml, "description"),
+      source,
+      sourceId
+    },
+    input
+  );
+}
+
+async function lookupBnf(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const queries = isbn
+    ? [`bib.fuzzyISBN any ${cqlQuoted(isbn)}`]
+    : searchQueries(input).slice(0, 2).map((query) => `bib.title all ${cqlQuoted(query)}`);
+  const results: MetadataCandidate[] = [];
+
+  for (const query of queries) {
+    const params = new URLSearchParams({
+      version: "1.2",
+      operation: "searchRetrieve",
+      recordSchema: "dublincore",
+      maximumRecords: "5",
+      query
+    });
+    const xml = await getText(`https://catalogue.bnf.fr/api/SRU?${params.toString()}`);
+    results.push(...xmlRecords(xml).map((record) => mapSruDcRecord(record, "bnf", input)).filter((record): record is MetadataCandidate => Boolean(record)));
+  }
+
+  return results;
+}
+
+async function lookupDnb(input: VisionBook, isbn: string): Promise<MetadataCandidate[]> {
+  const queries = isbn ? [`isbn=${cqlQuoted(isbn)}`] : searchQueries(input).slice(0, 2).map((query) => `tit=${cqlQuoted(query)}`);
+  const results: MetadataCandidate[] = [];
+
+  for (const query of queries) {
+    const params = new URLSearchParams({
+      version: "1.1",
+      operation: "searchRetrieve",
+      recordSchema: "DC",
+      maximumRecords: "5",
+      query
+    });
+    const xml = await getText(`https://services.dnb.de/sru/dnb?${params.toString()}`);
+    results.push(...xmlRecords(xml).map((record) => mapSruDcRecord(record, "dnb", input)).filter((record): record is MetadataCandidate => Boolean(record)));
+  }
+
+  return results;
 }
 
 function hkbcField(html: string, field: string): string {
@@ -766,7 +1189,7 @@ function dedupeCandidates(candidates: MetadataCandidate[]): MetadataCandidate[] 
     }
   }
 
-  return Array.from(byKey.values()).sort((left, right) => right.score - left.score).slice(0, 8);
+  return Array.from(byKey.values()).sort((left, right) => right.score - left.score).slice(0, 12);
 }
 
 function candidateCompleteness(candidate: MetadataCandidate): number {
@@ -798,10 +1221,17 @@ export async function lookupBookMetadata(input: VisionBook): Promise<MetadataCan
   const sources = [
     { name: "open_library", lookup: lookupOpenLibrary },
     { name: "google_books", lookup: lookupGoogleBooks },
+    { name: "isbn_db", lookup: lookupIsbnDb },
+    { name: "naver_books", lookup: lookupNaverBooks },
+    { name: "rakuten_books", lookup: lookupRakutenBooks },
+    { name: "library_of_congress", lookup: lookupLibraryOfCongress },
     { name: "isbn_tw", lookup: lookupIsbnTw },
     { name: "kingstone", lookup: lookupKingstone },
     { name: "hkbookcentre", lookup: lookupHkBookCentre },
     { name: "douban", lookup: lookupDouban },
+    { name: "openbd", lookup: lookupOpenBd },
+    { name: "bnf", lookup: lookupBnf },
+    { name: "dnb", lookup: lookupDnb },
     { name: "internet_archive", lookup: lookupInternetArchive }
   ];
   const results = await Promise.allSettled(

@@ -42,6 +42,31 @@ describe("SQLite import confirmation", () => {
     expect(saveAppSettings({ uiLanguage: "not-supported" as never }).uiLanguage).toBe("zh-Hant");
   });
 
+  it("persists optional keyed metadata source settings", () => {
+    const saved = saveAppSettings({
+      isbndbApiKey: "isbn-key",
+      naverClientId: "naver-id",
+      naverClientSecret: "naver-secret",
+      rakutenApplicationId: "rakuten-app",
+      rakutenAccessKey: "rakuten-access"
+    });
+
+    expect(saved).toMatchObject({
+      isbndbApiKey: "isbn-key",
+      naverClientId: "naver-id",
+      naverClientSecret: "naver-secret",
+      rakutenApplicationId: "rakuten-app",
+      rakutenAccessKey: "rakuten-access"
+    });
+    expect(getAppSettings()).toMatchObject({
+      isbndbApiKey: "isbn-key",
+      naverClientId: "naver-id",
+      naverClientSecret: "naver-secret",
+      rakutenApplicationId: "rakuten-app",
+      rakutenAccessKey: "rakuten-access"
+    });
+  });
+
   it("does not create duplicate books when confirming the same ISBN twice", () => {
     const imagePath = "/uploads/imports/test/books.jpg";
     const batch = createImportBatch([imagePath], `test-${randomUUID()}`);

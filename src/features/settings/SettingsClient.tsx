@@ -20,7 +20,19 @@ const emptySettings: AppSettings = {
   opencodeGoMaxTokens: "2000",
   openaiApiKey: "",
   openaiVisionModel: "gpt-4.1-mini",
-  googleBooksApiKey: ""
+  googleBooksApiKey: "",
+  isbndbApiKey: "",
+  naverClientId: "",
+  naverClientSecret: "",
+  rakutenApplicationId: "",
+  rakutenAccessKey: ""
+};
+
+const metadataKeyLinks = {
+  googleBooks: "https://console.cloud.google.com/apis/library/books.googleapis.com",
+  isbndb: "https://isbndb.com/apidocs",
+  naver: "https://developers.naver.com/apps/#/register",
+  rakuten: "https://webservice.rakuten.co.jp/app/create"
 };
 
 export function SettingsClient(): React.ReactElement {
@@ -224,8 +236,87 @@ export function SettingsClient(): React.ReactElement {
                 placeholder={t("googleBooksPlaceholder")}
                 type="password"
               />
-              <span className="field-help">{t("googleBooksHelp")}</span>
+              <span className="field-help">{t("googleBooksKeyHelp")}</span>
             </label>
+            <div className="advanced-actions wide">
+              <a className="button" href={metadataKeyLinks.googleBooks} target="_blank" rel="noreferrer">
+                {t("applyKey")}
+              </a>
+            </div>
+            <p className="field-help wide">{t("googleBooksHelp")}</p>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h2>
+            <KeyRound size={18} aria-hidden="true" />
+            {t("keySourcesTitle")}
+          </h2>
+          <p className="field-help">{t("keySourcesHelp")}</p>
+          <div className="field-grid advanced-grid">
+            <label className="field wide">
+              <span>{t("isbndbApiKeyLabel")}</span>
+              <input
+                value={settings.isbndbApiKey}
+                onChange={(event) => update("isbndbApiKey", event.target.value)}
+                placeholder={t("googleBooksPlaceholder")}
+                type="password"
+              />
+              <span className="field-help">{t("isbndbHelp")}</span>
+            </label>
+            <div className="advanced-actions wide">
+              <a className="button" href={metadataKeyLinks.isbndb} target="_blank" rel="noreferrer">
+                {t("applyKey")}
+              </a>
+            </div>
+
+            <label className="field">
+              <span>{t("naverClientIdLabel")}</span>
+              <input
+                value={settings.naverClientId}
+                onChange={(event) => update("naverClientId", event.target.value)}
+                placeholder={t("googleBooksPlaceholder")}
+              />
+            </label>
+            <label className="field">
+              <span>{t("naverClientSecretLabel")}</span>
+              <input
+                value={settings.naverClientSecret}
+                onChange={(event) => update("naverClientSecret", event.target.value)}
+                placeholder={t("googleBooksPlaceholder")}
+                type="password"
+              />
+            </label>
+            <div className="advanced-actions wide">
+              <span className="field-help">{t("naverHelp")}</span>
+              <a className="button" href={metadataKeyLinks.naver} target="_blank" rel="noreferrer">
+                {t("applyKey")}
+              </a>
+            </div>
+
+            <label className="field">
+              <span>{t("rakutenApplicationIdLabel")}</span>
+              <input
+                value={settings.rakutenApplicationId}
+                onChange={(event) => update("rakutenApplicationId", event.target.value)}
+                placeholder={t("googleBooksPlaceholder")}
+              />
+            </label>
+            <label className="field">
+              <span>{t("rakutenAccessKeyLabel")}</span>
+              <input
+                value={settings.rakutenAccessKey}
+                onChange={(event) => update("rakutenAccessKey", event.target.value)}
+                placeholder={t("googleBooksPlaceholder")}
+                type="password"
+              />
+            </label>
+            <div className="advanced-actions wide">
+              <span className="field-help">{t("rakutenHelp")}</span>
+              <a className="button" href={metadataKeyLinks.rakuten} target="_blank" rel="noreferrer">
+                {t("applyKey")}
+              </a>
+            </div>
           </div>
         </div>
 

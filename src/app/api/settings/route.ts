@@ -15,7 +15,12 @@ const settingsSchema = z.object({
   opencodeGoMaxTokens: z.string().optional(),
   openaiApiKey: z.string().optional(),
   openaiVisionModel: z.string().optional(),
-  googleBooksApiKey: z.string().optional()
+  googleBooksApiKey: z.string().optional(),
+  isbndbApiKey: z.string().optional(),
+  naverClientId: z.string().optional(),
+  naverClientSecret: z.string().optional(),
+  rakutenApplicationId: z.string().optional(),
+  rakutenAccessKey: z.string().optional()
 });
 
 export async function GET(): Promise<NextResponse> {

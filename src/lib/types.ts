@@ -61,6 +61,11 @@ export interface AppSettings {
   openaiApiKey: string;
   openaiVisionModel: string;
   googleBooksApiKey: string;
+  isbndbApiKey: string;
+  naverClientId: string;
+  naverClientSecret: string;
+  rakutenApplicationId: string;
+  rakutenAccessKey: string;
 }
 
 export interface MetadataCandidate {
@@ -76,10 +81,17 @@ export interface MetadataCandidate {
   source:
     | "open_library"
     | "google_books"
+    | "isbn_db"
+    | "naver_books"
+    | "rakuten_books"
+    | "library_of_congress"
     | "isbn_tw"
     | "kingstone"
     | "hkbookcentre"
     | "douban"
+    | "openbd"
+    | "bnf"
+    | "dnb"
     | "internet_archive"
     | "manual";
   sourceId: string;

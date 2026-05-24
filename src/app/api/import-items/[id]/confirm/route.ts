@@ -20,7 +20,23 @@ const candidateSchema = z.object({
   coverUrl: z.string().default(""),
   description: z.string().default(""),
   source: z
-    .enum(["open_library", "google_books", "isbn_tw", "kingstone", "hkbookcentre", "douban", "internet_archive", "manual"])
+    .enum([
+      "open_library",
+      "google_books",
+      "isbn_db",
+      "naver_books",
+      "rakuten_books",
+      "library_of_congress",
+      "isbn_tw",
+      "kingstone",
+      "hkbookcentre",
+      "douban",
+      "openbd",
+      "bnf",
+      "dnb",
+      "internet_archive",
+      "manual"
+    ])
     .default("manual"),
   sourceId: z.string().default(""),
   score: z.number().min(0).max(1).default(0)

@@ -165,7 +165,12 @@ function defaultAppSettings(): AppSettings {
     opencodeGoMaxTokens: process.env.OPENCODE_GO_MAX_TOKENS || "2000",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     openaiVisionModel: process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini",
-    googleBooksApiKey: process.env.GOOGLE_BOOKS_API_KEY || ""
+    googleBooksApiKey: process.env.GOOGLE_BOOKS_API_KEY || "",
+    isbndbApiKey: process.env.ISBNDB_API_KEY || "",
+    naverClientId: process.env.NAVER_CLIENT_ID || "",
+    naverClientSecret: process.env.NAVER_CLIENT_SECRET || "",
+    rakutenApplicationId: process.env.RAKUTEN_APPLICATION_ID || "",
+    rakutenAccessKey: process.env.RAKUTEN_ACCESS_KEY || ""
   };
 }
 
@@ -179,7 +184,12 @@ const appSettingKeys = new Set<keyof AppSettings>([
   "opencodeGoMaxTokens",
   "openaiApiKey",
   "openaiVisionModel",
-  "googleBooksApiKey"
+  "googleBooksApiKey",
+  "isbndbApiKey",
+  "naverClientId",
+  "naverClientSecret",
+  "rakutenApplicationId",
+  "rakutenAccessKey"
 ]);
 
 export function getAppSettings(): AppSettings {
